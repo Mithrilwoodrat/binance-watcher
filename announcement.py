@@ -7,15 +7,16 @@ import string
 import time
 import re
 import json
-from typing import Optional
+from typing import Dict, List, Optional
 
 import requests
 import logging
 
 previously_found_coins = set()
+latest_listing=''
 
 
-def get_announcement() -> Optional[str]:
+def get_announcements() -> List[Dict]:
     """
     Retrieves new coin listing announcements
     """
@@ -38,27 +39,39 @@ def get_announcement() -> Optional[str]:
         # No X-Cache header was found - great news, we're hitting the source.
         pass
 
+    announcements = []
     if resp.status_code != 200:
         logging.error("request error")
-        return
+        return announcements
 
     latest_announcement = resp.json()
     logging.debug("Finished pulling announcement page")
     logging.debug(latest_announcement)
-    return latest_announcement['data']['catalogs'][0]['articles'][0]['title']
+    data = latest_announcement.get('data')
+    if not data :
+        logging.error("get data error")
+        return announcements
+    catalogs = data.get('catalogs')
+    if not catalogs or len(catalogs) == 0:
+        logging.error("get catalogs error")
+        return announcements
+    announcements = catalogs[0].get('articles')
+    return announcements
 
 
 def get_last_coin():
     """
      Returns new Symbol when appropriate
     """
-    latest_announcement = get_announcement()
+    announcements = get_announcements()
+    latest_announcement = announcements[0]['title']
+    logging.info("latest_announcement :" + latest_announcement)
 
     found_coin = re.findall('\(([^)]+)', latest_announcement)
-
+    logging.info
     uppers = None
 
-    if 'Will List' not in latest_announcement or found_coin[0] == globals.latest_listing or \
+    if 'Will List' not in latest_announcement or found_coin[0] == latest_listing or \
             found_coin[0] in previously_found_coins:
         return None
     else:
