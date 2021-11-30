@@ -12,6 +12,8 @@ from typing import Dict, List, Optional
 import requests
 import logging
 
+from db_util import Announcement
+
 previously_found_coins = set()
 latest_listing=''
 
@@ -58,6 +60,26 @@ def get_announcements() -> List[Dict]:
     announcements = catalogs[0].get('articles')
     return announcements
 
+def insert_announcements():
+    announcements = get_announcements()
+    for announcement in announcements:
+        title = announcement['title']
+        found_coin = 0
+        coin_name = ''
+        results = re.findall('\(([^)]+)', title)
+        if len(results) == 1:
+            coin_name = results[0]
+        if 'Will List' in title:
+            found_coin=1
+        announcement_time = announcement['releaseDate']
+        print(title)
+        exist = Announcement.select().where((Announcement.title == title) & (Announcement.coin_name == coin_name))
+        print(len(exist))
+        if len(exist) == 0 :
+            print("insert")
+            record = Announcement.create(title=title, coin_name=coin_name, found_coin=found_coin, announcement_time=announcement_time)
+            record.save()
+
 
 def get_last_coin():
     """
@@ -81,7 +103,7 @@ def get_last_coin():
             logging.info('New coin detected: ' + uppers)
         if len(found_coin) != 1:
             uppers = None
-    print(f'{uppers=}')
+    print('uppers='+uppers)
     return uppers
 
 
@@ -91,5 +113,5 @@ if __name__ == "__main__":
     logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
     logging.getLogger('web3.providers.HTTPProvider').setLevel(logging.WARNING)
     logging.getLogger('web3.RequestManager').setLevel(logging.WARNING)
-    # print(get_announcement())
-    print(get_last_coin())
+    insert_announcements()
+    # print(get_announcements())
